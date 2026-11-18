@@ -1,0 +1,43 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "go-web-starter",
+  "version": "1.0.0",
+  "description": "Generate a full-stack website with a Go REST API, React, TypeScript, Tailwind CSS, PostgreSQL, and account-owned records.",
+  "keywords": [
+    "go",
+    "react",
+    "postgresql",
+    "typescript",
+    "tailwind",
+    "website",
+    "crud"
+  ],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Go Web Starter",
+        "shortDescription": "Build full-stack Go websites",
+        "longDescription": "Build a website from a brief. Start with a public landing page, email and password accounts, and a private workspace where each user can create, view, edit, and delete their own records. Customize the site name, resource, fields, and copy. The generated project includes a Go REST API, a React and TypeScript frontend styled with Tailwind CSS, PostgreSQL migrations, a Docker Compose setup, and tests.",
+        "category": "Developer Tools",
+        "logo": "./assets/icon.png",
+        "composerIcon": "./assets/icon.png",
+        "defaultPrompt": [
+          "Create a project tracker called Fieldbook with a landing page, accounts, and a private project dashboard.",
+          "Build a client portal with sign-up and a dashboard for creating, viewing, editing, and deleting clients."
+        ],
+        "websiteURL": "https://github.com/khalidbm1/go-web-starter",
+        "supportURL": "https://github.com/khalidbm1/go-web-starter/issues"
+      },
+      "review": {
+        "prompts": [
+          "Build a personal reading list called Shelf with email sign-in and private book records.",
+          "Create a client workspace called Studio Desk. Include an editable company name and contact email on each client."
+        ]
+      },
+      "publication": {
+        "release_notes": "Initial release with customizable website generation, account sessions, owner-scoped REST CRUD, and Docker Compose."
+      }
+    }
+  },
+  "repository": "https://github.com/khalidbm1/go-web-starter"
+}

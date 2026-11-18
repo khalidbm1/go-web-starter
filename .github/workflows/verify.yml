@@ -1,0 +1,50 @@
+name: Verify generated website
+on: [push, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  website:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate Studio Desk from the distributed plugin
+        run: |
+          unzip -q downloads/go-web-starter-1.0.0.zip -d "$RUNNER_TEMP/plugin"
+          diff -qr plugins/go-web-starter "$RUNNER_TEMP/plugin/go-web-starter"
+          python3 "$RUNNER_TEMP/plugin/go-web-starter/skills/build-website/scripts/scaffold.py" sample --name "Studio Desk" --resource client --plural clients
+      - uses: actions/setup-go@v6
+        with:
+          go-version: '1.27.x'
+          cache: false
+      - name: Start the generated Compose application
+        working-directory: sample
+        run: |
+          cat > compose.test.yaml <<'YAML'
+          services:
+            db:
+              ports:
+                - "127.0.0.1:15432:5432"
+          YAML
+          docker compose -f compose.yaml -f compose.test.yaml up --build -d --wait
+          curl --fail --silent --show-error --retry-all-errors --retry 12 http://localhost:8080/api/ready
+      - name: Run Go tests against PostgreSQL
+        working-directory: sample
+        run: |
+          set -a
+          . ./.env
+          set +a
+          export TEST_DATABASE_URL="postgres://website:${POSTGRES_PASSWORD}@127.0.0.1:15432/website?sslmode=disable"
+          go vet ./...
+          go test -count=1 -v ./...
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Exercise the website in Chrome
+        run: |
+          npm install --prefix "$RUNNER_TEMP/browser-check" --no-fund --no-audit playwright-core@1.56.1
+          PLAYWRIGHT_CORE="$RUNNER_TEMP/browser-check/node_modules/playwright-core" node tests/browser.cjs
+      - name: Stop the disposable site
+        if: always()
+        working-directory: sample
+        run: docker compose -f compose.yaml -f compose.test.yaml down -v

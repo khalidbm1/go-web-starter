@@ -1,0 +1,12 @@
+{
+  "name": "go-web-tools",
+  "interface": {"displayName": "Go Web Tools"},
+  "plugins": [
+    {
+      "name": "go-web-starter",
+      "source": {"source": "local", "path": "./plugins/go-web-starter"},
+      "policy": {"installation": "AVAILABLE", "authentication": "ON_INSTALL"},
+      "category": "Developer Tools"
+    }
+  ]
+}

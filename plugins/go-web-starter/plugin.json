@@ -1,8 +1,8 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "go-web-starter",
-  "version": "1.0.0",
-  "description": "Generate a full-stack website with a Go REST API, React, TypeScript, Tailwind CSS, PostgreSQL, and account-owned records.",
+  "version": "1.1.0",
+  "description": "Generate modular Go, React, TypeScript, Tailwind CSS, and PostgreSQL websites with profiles, dashboards, an admin panel, user management, and private CRUD.",
   "keywords": [
     "go",
     "react",
@@ -17,7 +17,7 @@
       "interface": {
         "displayName": "Go Web Starter",
         "shortDescription": "Build full-stack Go websites",
-        "longDescription": "Build a website from a brief. Start with a public landing page, email and password accounts, and a private workspace where each user can create, view, edit, and delete their own records. Customize the site name, resource, fields, and copy. The generated project includes a Go REST API, a React and TypeScript frontend styled with Tailwind CSS, PostgreSQL migrations, a Docker Compose setup, and tests.",
+        "longDescription": "Build a full-stack website from a brief. Deliver a public landing page, accounts, private user profiles, personal dashboards, and an administrator panel for managing users, roles, and access. Register additional CRUD modules in a generated project using its command-line tool. Each module shares the Go REST API, React and TypeScript screens, Tailwind CSS, and PostgreSQL while isolating records by account and module. Includes migrations, Docker Compose, and tests.",
         "category": "Developer Tools",
         "logo": "./assets/icon.png",
         "composerIcon": "./assets/icon.png",
@@ -31,11 +31,12 @@
       "review": {
         "prompts": [
           "Build a personal reading list called Shelf with email sign-in and private book records.",
-          "Create a client workspace called Studio Desk. Include an editable company name and contact email on each client."
+          "Create a client workspace called Studio Desk. Include an editable company name and contact email on each client.",
+          "Build a studio portal with clients and invoices, personal profiles, and an admin dashboard for managing accounts."
         ]
       },
       "publication": {
-        "release_notes": "Initial release with customizable website generation, account sessions, owner-scoped REST CRUD, and Docker Compose."
+        "release_notes": "Added private profiles, user and administrator dashboards, account and role management, session revocation, and a resource registry and CLI for extending generated sites."
       }
     }
   },

@@ -5,7 +5,7 @@ import (
 	"crypto/rand"
 	"database/sql"
 	"embed"
-	"encoding/json"
+
 	"errors"
 	"fmt"
 	"log"
@@ -15,7 +15,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
-	"regexp"
+
 	"syscall"
 	"time"
 
@@ -26,6 +26,7 @@ import (
 var source embed.FS
 
 type app struct {
+	modules                       []module
 	db                            *sql.DB
 	origin, collection, staticDir string
 	secure                        bool
@@ -85,16 +86,15 @@ func newApp(db *sql.DB, origin, staticDir string) (*app, error) {
 	if err != nil {
 		return nil, err
 	}
-	var config struct{ Collection string }
-	err = json.Unmarshal(body, &config)
-	if err != nil || !regexp.MustCompile(`^[a-z][a-z0-9]*(-[a-z0-9]+)*$`).MatchString(config.Collection) || config.Collection == "auth" || config.Collection == "health" || config.Collection == "ready" {
-		return nil, errors.New("invalid collection in site.json")
+	modules, err := loadModules(body)
+	if err != nil {
+		return nil, err
 	}
 	salt := make([]byte, 16)
 	if _, err := rand.Read(salt); err != nil {
 		return nil, err
 	}
-	return &app{db: db, origin: origin, collection: config.Collection, staticDir: staticDir, secure: u.Scheme == "https", hashSlots: make(chan struct{}, 4), dummySalt: salt}, nil
+	return &app{db: db, origin: origin, modules: modules, collection: modules[0].Collection, staticDir: staticDir, secure: u.Scheme == "https", hashSlots: make(chan struct{}, 4), dummySalt: salt}, nil
 }
 
 func (a *app) routes() http.Handler {
@@ -113,13 +113,20 @@ func (a *app) routes() http.Handler {
 	mux.HandleFunc("POST /api/auth/login", a.login)
 	mux.HandleFunc("POST /api/auth/logout", a.logout)
 	mux.HandleFunc("GET /api/auth/me", a.signedIn(func(w http.ResponseWriter, r *http.Request, u user) { jsonResponse(w, 200, u) }))
-	path := "/api/" + a.collection
-	mux.HandleFunc("GET "+path, a.signedIn(a.listRecords))
-	mux.HandleFunc("POST "+path, a.signedIn(a.createRecord))
-	mux.HandleFunc("GET "+path+"/{id}", a.signedIn(a.getRecord))
-	mux.HandleFunc("PUT "+path+"/{id}", a.signedIn(a.updateRecord))
-	mux.HandleFunc("DELETE "+path+"/{id}", a.signedIn(a.deleteRecord))
-	for _, route := range []string{"/{$}", "/signin", "/signup", "/app"} {
+	mux.HandleFunc("GET /api/dashboard", a.signedIn(a.dashboard))
+	mux.HandleFunc("GET /api/profile", a.signedIn(a.profile))
+	mux.HandleFunc("PUT /api/profile", a.signedIn(a.editProfile))
+	mux.HandleFunc("PUT /api/profile/password", a.signedIn(a.changePassword))
+	mux.HandleFunc("GET /api/admin/overview", a.adminOnly(a.adminOverview))
+	mux.HandleFunc("GET /api/admin/users", a.adminOnly(a.users))
+	mux.HandleFunc("POST /api/admin/users", a.adminOnly(a.createUser))
+	mux.HandleFunc("GET /api/admin/users/{id}", a.adminOnly(a.showUser))
+	mux.HandleFunc("PUT /api/admin/users/{id}", a.adminOnly(a.updateUser))
+	mux.HandleFunc("DELETE /api/admin/users/{id}", a.adminOnly(a.deleteUser))
+	for _, m := range a.modules {
+		a.mountModule(mux, m)
+	}
+	for _, route := range []string{"/{$}", "/signin", "/signup", "/app", "/dashboard", "/admin", "/profile"} {
 		mux.HandleFunc("GET "+route, func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Cache-Control", "no-cache")
 			http.ServeFile(w, r, filepath.Join(a.staticDir, "index.html"))
@@ -170,6 +177,18 @@ func run() error {
 	cancel()
 	if err != nil {
 		return err
+	}
+	if len(os.Args) > 1 {
+		if len(os.Args) != 4 || os.Args[1] != "admin" || os.Args[2] != "promote" {
+			return errors.New("usage: website admin promote <existing email>")
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+		defer cancel()
+		if err := promote(ctx, db, os.Args[3]); err != nil {
+			return err
+		}
+		log.Print("Administrator access is active. Sign in again to open /admin.")
+		return nil
 	}
 	stop, done := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer done()

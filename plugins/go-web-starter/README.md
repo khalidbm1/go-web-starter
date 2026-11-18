@@ -2,6 +2,8 @@
 
 Ask the plugin to build a website with a Go API, a React and TypeScript frontend, Tailwind CSS, and PostgreSQL. It includes a public landing page, accounts, and a private CRUD workspace.
 
+Generated sites include private profiles, a personal dashboard, and an admin panel with user management. Add more CRUD modules using the generated project's manage.py command.
+
 Example prompt:
 
 > Build Studio Desk, a private client tracker. Include a public landing page, email sign-up, and a dashboard for creating, viewing, editing, and deleting clients.

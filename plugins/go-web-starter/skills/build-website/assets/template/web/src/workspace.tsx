@@ -1,6 +1,9 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
-import { api, capital, collection, message, site, statuses, statusName,
+import { api, capital, collection, message, modules, site, statuses, statusName,
   type User, type Draft, type Entry, type Page, type Status } from './api'
+
+import { AccountHeader, Metrics } from './account'
+type Counts={total:number;planned:number;active:number;done:number}
 
 type Screen = { kind: 'list' } | { kind: 'new' } | { kind: 'detail' | 'edit' | 'delete'; entry: Entry }
 const blank: Draft = { title: '', notes: '', status: 'planned' }
@@ -24,6 +27,7 @@ export function Workspace({brand}: {brand: ReactNode}) {
   const [user,setUser]=useState<User|null>(null)
   const [entries,setEntries]=useState<Entry[]>([])
   const [more,setMore]=useState(false)
+  const [counts,setCounts]=useState<Counts|null>(null)
   const [screen,setScreen]=useState<Screen>({kind:'list'})
   const [busy,setBusy]=useState(true)
   const [loaded,setLoaded]=useState(false)
@@ -31,7 +35,7 @@ export function Workspace({brand}: {brand: ReactNode}) {
   const [notice,setNotice]=useState('')
 
   async function reload() {
-    const page=await api<Page>(collection)
+    const [page,summary]=await Promise.all([api<Page>(collection),api<Counts>('/api/dashboard?module='+encodeURIComponent(site.collection))]);setCounts(summary)
     setEntries(page.items);setMore(page.more);setLoaded(true)
   }
   async function task(fn:()=>Promise<void>) {
@@ -62,14 +66,14 @@ export function Workspace({brand}: {brand: ReactNode}) {
   const onscreen=screen.kind==='detail'||screen.kind==='edit'||screen.kind==='delete'?screen.entry:null
   const heading=screen.kind==='list'?capital(site.pluralLabel):screen.kind==='new'?'New '+site.label:
     screen.kind==='edit'?'Edit '+site.label:screen.kind==='delete'?'Delete this '+site.label+'?':onscreen?.title
-  return <div className="shell"><header className="top">{brand}
-    {user&&<div className="account"><span>{user.email}</span><button className="link" disabled={busy} onClick={()=>void task(async()=>{await api('/api/auth/logout','POST');window.location.replace('/')})}>Sign out</button></div>}
-    </header><main className="work">
+  return <div className="shell"><AccountHeader brand={brand} user={user}/><main className="work">
+      {user&&modules.length>1&&<nav className="module-nav" aria-label="Modules">{modules.map(m=><a key={m.collection} href={'/app?module='+encodeURIComponent(m.collection)} aria-current={m.collection===site.collection?'page':undefined}>{capital(m.pluralLabel)}</a>)}</nav>}
       {screen.kind!=='list'&&<button className="link mb-5" disabled={busy} onClick={back}>← All {site.pluralLabel}</button>}
       <div className="work-heading"><h1>{heading}</h1>
         {user&&screen.kind==='list'&&<button className="button primary" disabled={busy} onClick={()=>move({kind:'new'})}>New {site.label}</button>}</div>
       {error&&<div className="error" role="alert">{error} {(!user||!loaded)&&<button disabled={busy} className="link" onClick={start}>Retry</button>}</div>}
       <div role="status" aria-live="polite">{busy?'Working…':notice}</div>
+      {user&&screen.kind==='list'&&counts&&<Metrics label="Your record totals" items={[[capital(site.pluralLabel),counts.total],['Planned',counts.planned],['Active',counts.active],['Done',counts.done]]}/>}
       {user&&screen.kind==='list'&&loaded&&
         <section className="list-panel" aria-label={'Your '+site.pluralLabel}>{!entries.length?<div className="empty"><h2>No {site.pluralLabel} yet.</h2><p>Create your first {site.label} to get started.</p></div>:
           <ul>{entries.map(entry=><li className="entry-row" key={entry.id}>

@@ -20,8 +20,10 @@ import (
 )
 
 type user struct {
-	ID    string `json:"id"`
-	Email string `json:"email"`
+	ID          string `json:"id"`
+	Email       string `json:"email"`
+	Role        string `json:"role"`
+	DisplayName string `json:"displayName"`
 }
 type credentials struct {
 	Email    string `json:"email"`
@@ -57,7 +59,7 @@ func (a *app) signedIn(next func(http.ResponseWriter, *http.Request, user)) http
 			return
 		}
 		var u user
-		err := a.db.QueryRowContext(r.Context(), `SELECT u.id,u.email FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=$1 AND s.expires_at>now()`, key).Scan(&u.ID, &u.Email)
+		err := a.db.QueryRowContext(r.Context(), `SELECT u.id,u.email,u.role,u.display_name FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token_hash=$1 AND s.expires_at>now() AND u.active`, key).Scan(&u.ID, &u.Email, &u.Role, &u.DisplayName)
 		if errors.Is(err, sql.ErrNoRows) {
 			problem(w, 401, "Sign in to continue.")
 			return
@@ -70,6 +72,8 @@ func (a *app) signedIn(next func(http.ResponseWriter, *http.Request, user)) http
 	}
 }
 
+func normalizedEmail(s string) string { return strings.ToLower(strings.TrimSpace(s)) }
+func validPassword(s string) bool     { return utf8.RuneCountInString(s) >= 12 && len(s) <= 512 }
 func validEmail(email string) bool {
 	addr, err := mail.ParseAddress(email)
 	return err == nil && addr.Address == email && len(email) <= 254 && strings.Contains(email, "@")
@@ -92,8 +96,8 @@ func (a *app) input(w http.ResponseWriter, r *http.Request) (credentials, bool) 
 	if !decode(w, r, &c) {
 		return c, false
 	}
-	c.Email = strings.ToLower(strings.TrimSpace(c.Email))
-	if !validEmail(c.Email) || utf8.RuneCountInString(c.Password) < 12 || len(c.Password) > 512 {
+	c.Email = normalizedEmail(c.Email)
+	if !validEmail(c.Email) || !validPassword(c.Password) {
 		problem(w, 422, "Use a valid email and a password of at least 12 characters (up to 512 bytes).")
 		return c, false
 	}
@@ -116,14 +120,24 @@ func (a *app) input(w http.ResponseWriter, r *http.Request) (credentials, bool) 
 			return c, false
 		}
 	}
+	return c, a.takeHashSlot(w)
+}
+
+func (a *app) takeHashSlot(w http.ResponseWriter) bool {
 	select {
 	case a.hashSlots <- struct{}{}:
-		return c, true
+		return true
 	default:
 		w.Header().Set("Retry-After", "2")
-		problem(w, 429, "Sign-in is busy. Try again shortly.")
-		return c, false
+		problem(w, 429, "Account services are busy. Try again shortly.")
+		return false
 	}
+}
+
+func freshPassword(password string) ([]byte, []byte) {
+	salt := make([]byte, 16)
+	_, _ = rand.Read(salt)
+	return salt, passwordHash(password, salt)
 }
 
 func passwordHash(password string, salt []byte) []byte {
@@ -136,9 +150,7 @@ func (a *app) register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer func() { <-a.hashSlots }()
-	salt := make([]byte, 16)
-	_, _ = rand.Read(salt)
-	hash := passwordHash(c.Password, salt)
+	salt, hash := freshPassword(c.Password)
 	tx, err := a.db.BeginTx(r.Context(), nil)
 	if err != nil {
 		dbError(w, err)
@@ -146,7 +158,7 @@ func (a *app) register(w http.ResponseWriter, r *http.Request) {
 	}
 	defer tx.Rollback()
 	var u user
-	err = tx.QueryRowContext(r.Context(), `INSERT INTO users(email,salt,password_hash) VALUES($1,$2,$3) RETURNING id,email`, c.Email, salt, hash).Scan(&u.ID, &u.Email)
+	err = tx.QueryRowContext(r.Context(), `INSERT INTO users(email,salt,password_hash) VALUES($1,$2,$3) RETURNING id,email,role,display_name`, c.Email, salt, hash).Scan(&u.ID, &u.Email, &u.Role, &u.DisplayName)
 	var pg *pq.Error
 	if errors.As(err, &pg) && pg.Code == "23505" {
 		problem(w, 409, "Unable to create an account with that email.")
@@ -165,9 +177,15 @@ func (a *app) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer func() { <-a.hashSlots }()
+	tx, err := a.db.BeginTx(r.Context(), nil)
+	if err != nil {
+		dbError(w, err)
+		return
+	}
+	defer tx.Rollback()
 	var u user
 	var salt, expected []byte
-	err := a.db.QueryRowContext(r.Context(), "SELECT id,email,salt,password_hash FROM users WHERE email=$1", c.Email).Scan(&u.ID, &u.Email, &salt, &expected)
+	err = tx.QueryRowContext(r.Context(), "SELECT id,email,role,display_name,salt,password_hash FROM users WHERE email=$1 AND active FOR SHARE", c.Email).Scan(&u.ID, &u.Email, &u.Role, &u.DisplayName, &salt, &expected)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		dbError(w, err)
 		return
@@ -181,12 +199,6 @@ func (a *app) login(w http.ResponseWriter, r *http.Request) {
 		problem(w, 401, "Email or password is incorrect.")
 		return
 	}
-	tx, err := a.db.BeginTx(r.Context(), nil)
-	if err != nil {
-		dbError(w, err)
-		return
-	}
-	defer tx.Rollback()
 	a.issueSession(w, r, tx, u, 200)
 }
 

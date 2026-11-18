@@ -30,3 +30,9 @@ For additional fields, change the database migration, Go request and response ty
 Follow the generated README.md for prerequisites, Docker Compose, development, the API contract, and tests. Run the frontend type check and build, Go tests, and integration tests against a disposable PostgreSQL database when available. Exercise the public page, sign-up, sign-in, all four record operations, persistence, account isolation, and sign-out. Tell the user exactly which checks ran and any environmental limitation.
 
 Return the project location and the simplest way to start it. In a hosted coding environment, return a downloadable project when the user needs files. Generate fresh local credentials for the recipient; keep them out of shared archives and have the recipient run python3 setup.py to create their own .env. Deploy only when requested, using the user's target. For a public deployment configure the HTTPS origin, private database connectivity, persistent storage and the hosting provider's secrets.
+
+## Profiles, administration, and additional modules
+
+Every new site includes a private user profile, a personal dashboard scoped to each module, and an administrator dashboard with user management. Keep sign-up accounts at the user role. Bootstrap the first administrator for a requested test deployment with the generated operator command and a dedicated test account. Show the owner how to promote their own account without shipping a default administrator password.
+
+For each additional CRUD resource in the brief, run the generated project's command, for example `python3 manage.py add-resource invoice --plural invoices`. Rebuild after adding modules. The shared router and typed UI expose separate collections with owner- and module-scoped queries. Extend the migration, request validation, and forms when the brief needs business-specific fields. Test the profile workflow, administrator and ordinary-user access, user lifecycle, and two-module isolation.

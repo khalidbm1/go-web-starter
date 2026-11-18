@@ -5,15 +5,13 @@ import html
 import json
 import os
 from pathlib import Path
-import re
+import runpy
 import shutil
 import subprocess
 import sys
 import tempfile
 
 TEMPLATE = Path(__file__).resolve().parents[1] / "assets" / "template"
-KEY = re.compile(r"[a-z][a-z0-9]*(?:-[a-z0-9]+)*\Z")
-RESERVED = {"auth", "health", "ready"}
 
 
 def main():
@@ -25,16 +23,13 @@ def main():
     cli.add_argument("--label", help="singular display label")
     cli.add_argument("--plural-label", help="plural display label")
     args = cli.parse_args()
-    plural = args.plural if args.plural is not None else args.resource + "s"
-    label = (args.label if args.label is not None else args.resource.replace("-", " ")).strip()
-    labels = (args.plural_label if args.plural_label is not None else plural.replace("-", " ")).strip()
-    for key in (args.resource, plural):
-        if len(key) > 48 or not KEY.fullmatch(key) or key in RESERVED:
-            cli.error("resource keys must be lowercase URL slugs up to 48 characters; auth, health, and ready are reserved")
-    for value in (args.name.strip(), label, labels):
-        if not value or len(value) > 80 or not value.isprintable():
-            cli.error("name and labels must contain 1 to 80 printable characters")
-
+    try:
+        spec = runpy.run_path(str(TEMPLATE / "manage.py"))["resource_spec"](args.resource, args.plural, args.label, args.plural_label)
+    except ValueError as exc:
+        cli.error(str(exc))
+    label = spec["label"]
+    if not args.name.strip() or len(args.name.strip()) > 80 or not args.name.strip().isprintable():
+        cli.error("site name must contain 1 to 80 printable characters")
     target = args.destination.expanduser().absolute()
     if target.is_symlink() or (target.exists() and (not target.is_dir() or any(target.iterdir()))):
         cli.error("choose an empty or new destination directory")
@@ -42,8 +37,7 @@ def main():
     examples = ["Website refresh", "Customer onboarding", "Quarterly review"] if args.resource == "project" else [
         f"First {label}", f"Second {label}", f"Third {label}",
     ]
-    config = {"name": args.name.strip(), "resource": args.resource, "collection": plural,
-              "label": label, "pluralLabel": labels, "examples": examples}
+    config = {"name": args.name.strip(), **spec, "examples": examples, "resources": []}
     with tempfile.TemporaryDirectory(prefix=".go-web-", dir=target.parent) as temp:
         stage = Path(temp) / "project"
         shutil.copytree(TEMPLATE, stage)

@@ -2,6 +2,8 @@ import { useState, type FormEvent } from 'react'
 import { createRoot } from 'react-dom/client'
 import { api, capital, message, site, statusName, type Status } from './api'
 import { Workspace } from './workspace'
+import { ProfilePage } from './account'
+import { AdminPage } from './admin'
 import './style.css'
 
 export function Brand() {
@@ -46,6 +48,7 @@ function Auth({ register }: { register: boolean }) {
   return <div className="shell"><header className="top"><Brand/><a href="/" className="link">Home</a></header>
     <main className="auth-panel"><h1>{register ? 'Create an account' : 'Welcome back.'}</h1>
       <p>{register ? 'Start your private workspace.' : 'Sign in to your workspace.'}</p>
+          {!register&&new URLSearchParams(window.location.search).has('updated')&&<p role="status">Account updated. Sign in again to continue.</p>}
       <form className="grid gap-5" onSubmit={submit}>
         <label>Email address<input type="email" name="email" autoComplete="email" maxLength={254} required/></label>
         <label>Password<input type="password" name="password" autoComplete={register ? 'new-password' : 'current-password'} minLength={register ? 12 : undefined} required aria-describedby={register ? 'password-help' : undefined}/></label>
@@ -58,6 +61,7 @@ function Auth({ register }: { register: boolean }) {
 }
 
 const path = window.location.pathname
-const page = path === '/app' ? <Workspace brand={<Brand/>}/> :
+const page = path === '/profile' ? <ProfilePage brand={<Brand/>}/> : path === '/admin' ? <AdminPage brand={<Brand/>}/> :
+  path === '/app' || path === '/dashboard' ? <Workspace brand={<Brand/>}/> :
   path === '/signin' || path === '/signup' ? <Auth register={path === '/signup'}/> : <Landing/>
 createRoot(document.getElementById('root')!).render(page)

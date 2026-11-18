@@ -77,7 +77,7 @@ func (a *app) listRecords(w http.ResponseWriter, r *http.Request, u user) {
 		}
 		offset = n
 	}
-	rows, err := a.db.QueryContext(r.Context(), "SELECT "+recordCols+" FROM records WHERE owner_id=$1 ORDER BY created_at DESC,id DESC LIMIT $2 OFFSET $3", u.ID, size+1, offset)
+	rows, err := a.db.QueryContext(r.Context(), "SELECT "+recordCols+" FROM records WHERE owner_id=$1 AND resource_key=$2 ORDER BY created_at DESC,id DESC LIMIT $3 OFFSET $4", u.ID, r.PathValue("resourceKey"), size+1, offset)
 	if err != nil {
 		dbError(w, err)
 		return
@@ -110,7 +110,7 @@ func (a *app) createRecord(w http.ResponseWriter, r *http.Request, u user) {
 	if !ok {
 		return
 	}
-	row := a.db.QueryRowContext(r.Context(), "INSERT INTO records(owner_id,title,notes,status) VALUES($1,$2,$3,$4) RETURNING "+recordCols, u.ID, item.Title, item.Notes, item.Status)
+	row := a.db.QueryRowContext(r.Context(), "INSERT INTO records(owner_id,title,notes,status,resource_key) VALUES($1,$2,$3,$4,$5) RETURNING "+recordCols, u.ID, item.Title, item.Notes, item.Status, r.PathValue("resourceKey"))
 	sendRecord(w, row, 201)
 }
 func (a *app) getRecord(w http.ResponseWriter, r *http.Request, u user) {
@@ -118,7 +118,7 @@ func (a *app) getRecord(w http.ResponseWriter, r *http.Request, u user) {
 	if !ok {
 		return
 	}
-	sendRecord(w, a.db.QueryRowContext(r.Context(), "SELECT "+recordCols+" FROM records WHERE owner_id=$1 AND id=$2", u.ID, id), 200)
+	sendRecord(w, a.db.QueryRowContext(r.Context(), "SELECT "+recordCols+" FROM records WHERE owner_id=$1 AND id=$2 AND resource_key=$3", u.ID, id, r.PathValue("resourceKey")), 200)
 }
 func (a *app) updateRecord(w http.ResponseWriter, r *http.Request, u user) {
 	id, ok := key(w, r)
@@ -129,7 +129,7 @@ func (a *app) updateRecord(w http.ResponseWriter, r *http.Request, u user) {
 	if !ok {
 		return
 	}
-	row := a.db.QueryRowContext(r.Context(), "UPDATE records SET title=$1,notes=$2,status=$3,updated_at=now() WHERE owner_id=$4 AND id=$5 RETURNING "+recordCols, item.Title, item.Notes, item.Status, u.ID, id)
+	row := a.db.QueryRowContext(r.Context(), "UPDATE records SET title=$1,notes=$2,status=$3,updated_at=now() WHERE owner_id=$4 AND id=$5 AND resource_key=$6 RETURNING "+recordCols, item.Title, item.Notes, item.Status, u.ID, id, r.PathValue("resourceKey"))
 	sendRecord(w, row, 200)
 }
 func (a *app) deleteRecord(w http.ResponseWriter, r *http.Request, u user) {
@@ -138,7 +138,7 @@ func (a *app) deleteRecord(w http.ResponseWriter, r *http.Request, u user) {
 		return
 	}
 	var deleted string
-	err := a.db.QueryRowContext(r.Context(), "DELETE FROM records WHERE owner_id=$1 AND id=$2 RETURNING id", u.ID, id).Scan(&deleted)
+	err := a.db.QueryRowContext(r.Context(), "DELETE FROM records WHERE owner_id=$1 AND id=$2 AND resource_key=$3 RETURNING id", u.ID, id, r.PathValue("resourceKey")).Scan(&deleted)
 	if errors.Is(err, sql.ErrNoRows) {
 		problem(w, 404, "Record not found.")
 		return

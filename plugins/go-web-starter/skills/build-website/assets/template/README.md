@@ -65,3 +65,42 @@ The database suite applies migrations, uses two temporary accounts, checks owner
 ## Hosting
 
 Set `APP_ORIGIN` to the exact external HTTPS origin and terminate TLS at your reverse proxy. For the provided Compose configuration, forward requests to the loopback web port on the Docker host. Use a private database connection, strong per-environment credentials, and persistent storage with backups. The generated password is URL-safe. Percent-encode credentials when supplying a custom connection URI. Keep the database password and .env outside version control. Configure traffic limits at your proxy in addition to the application's per-email and peer limits. The server reads the immediate peer address and does not trust client-supplied forwarding headers.
+
+## Dashboards and profiles
+
+Open **Dashboard** at `/app` or `/dashboard` for the signed-in user's records and their total, planned, active, and done counts. With several modules registered, the navigation switches between them and their separate counts. **Profile** at `/profile` lets a user edit a private display name and bio. Changing the email address or password requires the current password and revokes every session for that account.
+
+## Administration
+
+Register an account through the website. An operator with access to this site's Compose host grants its first administrator role with:
+
+```sh
+docker compose exec web website admin promote you@example.com
+```
+
+Replace the example address with the existing account's email and sign in again. For native development the equivalent command is `go run . admin promote you@example.com` with the site's `DATABASE_URL` set. Repeating promotion on an already active administrator is safe.
+
+Administrators get an **Admin panel** link to `/admin`. It shows account, role, access, and total record counts. **User management** supports search, pagination, account creation, display-name and email updates, password resets, role changes, disabling and reactivating accounts, and confirmed deletion. Deleting an account permanently removes its sessions and owned records across every module. Disabling it preserves its data. Credential, role, and access changes revoke the target's existing sessions. An administrator's own credential changes go through Profile. Another active administrator must remove or downgrade an administrator, which protects the last active administrator.
+
+| Method | Route | Scope |
+| --- | --- | --- |
+| GET | /api/dashboard?module={collection} | My counts for the selected module, defaulting to the primary one |
+| GET, PUT | /api/profile | Read or update my profile |
+| PUT | /api/profile/password | Change my password with the current one |
+| GET | /api/admin/overview | Administrator site totals |
+| GET, POST | /api/admin/users | Administrators list/search or create accounts; list parameters include q and offset |
+| GET, PUT, DELETE | /api/admin/users/{id} | Administrators read, edit, or delete an account |
+
+## Add a module
+
+The resource registry in `site.json` drives the Go API routes, record storage scope, typed React CRUD screens, module navigation, and dashboard counts. To add another module to an existing website:
+
+```sh
+python3 manage.py add-resource invoice --plural invoices
+python3 manage.py list-resources
+docker compose up --build -d
+```
+
+Open **Invoices** on the dashboard or visit `/app?module=invoices`. The new `/api/invoices` collection supports create, list, detail, update, and delete. Its records are isolated by account and module. The command preserves existing modules and records and can be repeated. A packaged Go binary and compiled React frontend both need rebuilding after registry changes.
+
+Every registered module starts with title, notes, and status. For fields such as invoice totals or currency, implement a domain-specific migration, API types and validation, and form fields. Use a stable resource key after data exists because it identifies a module's stored records.

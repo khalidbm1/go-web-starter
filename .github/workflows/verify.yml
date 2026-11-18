@@ -10,9 +10,12 @@ jobs:
       - uses: actions/checkout@v4
       - name: Generate Studio Desk from the distributed plugin
         run: |
-          unzip -q downloads/go-web-starter-1.0.0.zip -d "$RUNNER_TEMP/plugin"
+          unzip -q downloads/go-web-starter-1.1.0.zip -d "$RUNNER_TEMP/plugin"
           diff -qr plugins/go-web-starter "$RUNNER_TEMP/plugin/go-web-starter"
           python3 "$RUNNER_TEMP/plugin/go-web-starter/skills/build-website/scripts/scaffold.py" sample --name "Studio Desk" --resource client --plural clients
+          python3 sample/manage.py add-resource invoice --plural invoices
+          python3 sample/manage.py add-resource invoice --plural invoices
+          python3 sample/manage.py list-resources
       - uses: actions/setup-go@v6
         with:
           go-version: '1.27.x'
@@ -43,7 +46,15 @@ jobs:
       - name: Exercise the website in Chrome
         run: |
           npm install --prefix "$RUNNER_TEMP/browser-check" --no-fund --no-audit playwright-core@1.56.1
-          PLAYWRIGHT_CORE="$RUNNER_TEMP/browser-check/node_modules/playwright-core" node tests/browser.cjs
+          SAMPLE_DIR="$GITHUB_WORKSPACE/sample" PLAYWRIGHT_CORE="$RUNNER_TEMP/browser-check/node_modules/playwright-core" node tests/browser.cjs
+      - name: Install the public plugin in a clean Codex CLI
+        run: |
+          npm install --prefix "$RUNNER_TEMP/codex-check" --no-audit --no-fund @openai/codex@0.169.0
+          cli="$RUNNER_TEMP/codex-check/node_modules/.bin/codex"
+          "$cli" plugin marketplace add khalidbm1/go-web-starter --ref "$GITHUB_SHA" --json
+          "$cli" plugin add go-web-starter@go-web-tools --json
+          "$cli" plugin list --marketplace go-web-tools --json > "$RUNNER_TEMP/plugin-state.json"
+          node -e 'const {installed}=require(process.argv[1]);if(!installed.some(p=>p.name==="go-web-starter" && p.version==="1.1.0"))process.exit(1)' "$RUNNER_TEMP/plugin-state.json"
       - name: Stop the disposable site
         if: always()
         working-directory: sample

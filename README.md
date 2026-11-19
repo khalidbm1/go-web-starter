@@ -42,6 +42,6 @@ Use **Invoices** on your dashboard to work with the new collection. Each module 
 
 ## Package and support
 
-The plugin source is in `plugins/go-web-starter/`. To import a copy in Plugin Creator, use [the 1.1.0 portable ZIP](downloads/go-web-starter-1.1.0.zip). This GitHub marketplace can be installed directly, independently of the public ChatGPT directory.
+The plugin source is in `plugins/go-web-starter/`. To import a copy in Plugin Creator, use [the 1.1.1 portable ZIP](downloads/go-web-starter-1.1.1.zip). This GitHub marketplace can be installed directly, independently of the public ChatGPT directory.
 
 Report setup problems or defects using the repository's **Issues** tab. Include the failing step and relevant version numbers. Remove passwords, database URLs with credentials, session cookies, and live customer data from reports.

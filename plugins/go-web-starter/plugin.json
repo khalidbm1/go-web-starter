@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "go-web-starter",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Generate modular Go, React, TypeScript, Tailwind CSS, and PostgreSQL websites with profiles, dashboards, an admin panel, user management, and private CRUD.",
   "keywords": [
     "go",
@@ -36,7 +36,7 @@
         ]
       },
       "publication": {
-        "release_notes": "Added private profiles, user and administrator dashboards, account and role management, session revocation, and a resource registry and CLI for extending generated sites."
+        "release_notes": "Includes profiles, personal and administrator dashboards, user management, and a resource registry and CLI. Corrected the accessible labels of saved profile and record fields and administrative role controls."
       }
     }
   },

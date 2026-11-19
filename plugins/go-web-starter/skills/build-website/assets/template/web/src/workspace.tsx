@@ -16,9 +16,9 @@ function Editor({ initial, busy, save, cancel }: {
   function submit(e: FormEvent) { e.preventDefault(); save(draft) }
   return <form className="form-card grid gap-5" onSubmit={submit}>
     <label>Title<input required maxLength={160} value={draft.title} onChange={e=>setDraft({...draft,title:e.target.value})}/></label>
-    <label>Status<select value={draft.status} onChange={e=>setDraft({...draft,status:e.target.value as Status})}>
-      {statuses.map(s=><option key={s} value={s}>{statusName[s]}</option>)}</select></label>
-    <label>Notes<textarea rows={5} maxLength={4000} value={draft.notes} onChange={e=>setDraft({...draft,notes:e.target.value})}/></label>
+    <div className="field"><label htmlFor="record-status">Status</label><select id="record-status" value={draft.status} onChange={e=>setDraft({...draft,status:e.target.value as Status})}>
+      {statuses.map(s=><option key={s} value={s}>{statusName[s]}</option>)}</select></div>
+    <div className="field"><label htmlFor="record-notes">Notes</label><textarea id="record-notes" rows={5} maxLength={4000} value={draft.notes} onChange={e=>setDraft({...draft,notes:e.target.value})}/></div>
     <div className="actions"><button className="button primary" disabled={busy || !draft.title.trim()}>Save {site.label}</button><button className="button outline" type="button" onClick={cancel} disabled={busy}>Cancel</button></div>
   </form>
 }

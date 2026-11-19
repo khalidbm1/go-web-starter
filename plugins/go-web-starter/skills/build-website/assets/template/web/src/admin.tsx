@@ -13,8 +13,8 @@ function UserForm({initial,self,busy,save,cancel}:{
   return <form className="form-card grid gap-5" onSubmit={e=>{e.preventDefault();save(v)}}>
     <label>Display name<input value={v.displayName} maxLength={80} onChange={e=>set({...v,displayName:e.target.value})}/></label>
     <label>Email address<input type="email" value={v.email} maxLength={254} required disabled={self} onChange={e=>set({...v,email:e.target.value})}/></label>
-    <label>Role<select value={v.role} disabled={self} onChange={e=>set({...v,role:e.target.value as User['role']})}><option value="user">User</option><option value="admin">Administrator</option></select></label>
-    <label>Account access<select value={v.active?'active':'disabled'} disabled={self} onChange={e=>set({...v,active:e.target.value==='active'})}><option value="active">Active</option><option value="disabled">Disabled</option></select></label>
+    <div className="field"><label htmlFor="manage-role">Role</label><select id="manage-role" value={v.role} disabled={self} onChange={e=>set({...v,role:e.target.value as User['role']})}><option value="user">User</option><option value="admin">Administrator</option></select></div>
+    <div className="field"><label htmlFor="manage-access">Account access</label><select id="manage-access" value={v.active?'active':'disabled'} disabled={self} onChange={e=>set({...v,active:e.target.value==='active'})}><option value="active">Active</option><option value="disabled">Disabled</option></select></div>
     {!self&&<label>{initial?'Reset password (optional)':'Initial password'}<input type="password" autoComplete="new-password" value={v.password} minLength={12} required={!initial} onChange={e=>set({...v,password:e.target.value})}/></label>}
     {self&&<p>Manage your email and password in <a className="link" href="/profile">your profile</a>.</p>}
     <div className="actions"><button className="button primary" disabled={busy}>{initial?'Save account':'Create account'}</button><button type="button" className="button outline" disabled={busy} onClick={cancel}>Cancel</button></div>

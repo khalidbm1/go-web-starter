@@ -55,7 +55,7 @@ export function ProfilePage({brand}: {brand:ReactNode}){
       <form className="form-card grid gap-5" onSubmit={e=>void save(e,false)}>
         <h2 className="section-title">Profile details</h2>
         <label>Display name<input maxLength={80} autoComplete="name" value={displayName} onChange={e=>setName(e.target.value)}/></label>
-        <label>Bio<textarea maxLength={500} rows={4} value={bio} onChange={e=>setBio(e.target.value)}/></label>
+        <div className="field"><label htmlFor="profile-bio">Bio</label><textarea id="profile-bio" maxLength={500} rows={4} value={bio} onChange={e=>setBio(e.target.value)}/></div>
         <label>Email address<input type="email" required maxLength={254} autoComplete="email" value={email} onChange={e=>setEmail(e.target.value)}/></label>
         {emailChanged&&<><label>Current password to change email<input name="currentPassword" type="password" autoComplete="current-password" required/></label><small>Changing your email signs out all sessions.</small></>}
         <button className="button primary" disabled={busy}>Save profile</button>
